@@ -1,49 +1,43 @@
-# Documentaire en motion design codé — skill pour Claude
+# documentaire-motion-design
 
-Un *skill* (Claude Code / Claude Agent SDK) qui fabrique des vidéos documentaires et explicatives où **chaque image est dessinée par du code** (React + SVG avec [Remotion](https://www.remotion.dev/)), puis rendues en MP4. Pas d'images générées par IA : des formes, des personnages, des graphiques et du texte animés, synchronisés sur la voix off.
+A Claude skill that turns a topic into a **documentary / explainer video made of coded motion graphics**: every frame is drawn with React + SVG ([Remotion](https://www.remotion.dev/)), like a video-game scene or an animated slide, then rendered to MP4. No AI-generated images.
 
-*English: a Claude skill that produces explainer/documentary videos in coded motion design (Remotion, React/SVG), rendered to MP4 with voice-over, subtitles, selectable visual styles and a YouTube thumbnail. The skill content is in French; contributions in English or French are welcome.*
+![The four styles](documentaire-motion-design/assets/styles.png)
 
-## Ce que le skill produit
+## What you get
+- 1080p MP4 with voice-over and subtitles, each visual synced to the word that mentions it
+- 4 styles, picked at render time: `papier` (paper cut-out), `craie` (chalkboard), `infographie` (flat data-journalism), `nuit` (night glow)
+- YouTube thumbnail (1280x720), title ideas and a description with chapters computed from real scene timings
+- Voice options: your own ElevenLabs track (auto-cut into one clip per scene), free edge-tts voices, or a Google TTS fallback
+- Adjustable pacing: speed the voice up (e.g. +12%) and tighten the gap between scenes
 
-- Le MP4 1080p avec voix off et sous-titres
-- Le texte de la voix off, scène par scène
-- La miniature YouTube (1280×720)
-- Le titre et la description YouTube avec chapitres et sources
-
-## Styles
-
-| Style | Rendu | Police |
-|---|---|---|
-| `papier` (défaut) | collage de papier découpé, grain, ombres douces | Fredoka |
-| `craie` | tableau noir, décors à la craie | Caveat |
-| `infographie` | aplats nets, style data-journalisme | Poppins |
-| `nuit` | fond bleu nuit, éléments lumineux | Space Grotesk |
-
-## Installation
-
-Copiez le dossier `documentaire-motion-design/` dans votre dossier de skills :
+## Install
+Download the zip from the [latest release](https://github.com/Sami-Fd/documentaire-motion-design/releases/latest) and add it as a skill in Claude (Settings → Capabilities → Skills), or copy the `documentaire-motion-design` folder into your skills folder:
 
 ```bash
 git clone https://github.com/Sami-Fd/documentaire-motion-design.git
-# skill personnel
+# personal skill
 cp -r documentaire-motion-design/documentaire-motion-design ~/.claude/skills/
-# ou skill de projet
+# or project skill
 cp -r documentaire-motion-design/documentaire-motion-design .claude/skills/
 ```
 
-Puis demandez par exemple à Claude : « Fais-moi une vidéo documentaire de 3 minutes sur le cycle de l'eau, style craie. »
+## Use
+Ask Claude something like: *"Make a 2-minute documentary on how the water cycle works, `nuit` style."*
+Claude researches, writes the narration, codes the scenes, renders a preview sheet to check the layout, then renders the MP4.
 
-## Prérequis
+## Requirements
+Node 18+, ffmpeg, Python 3 (for the voice scripts), Chrome/Chromium for Remotion rendering.
 
-- Node.js 18+ (Remotion 4)
-- ffmpeg (découpe et contrôle des pistes audio)
-- Python 3.9+ pour les scripts de voix (`pip install edge-tts` pour la voix gratuite)
+## Notes
+- The skill's instructions and on-screen text are in French; Claude can produce videos in any language.
+- Remotion is free for individuals and small teams; larger companies need a Remotion company license (see [remotion.dev/license](https://www.remotion.dev/license)).
 
-## Contribuer
+## Contributing
+Fixes and suggestions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Les corrections et suggestions sont les bienvenues : voir [CONTRIBUTING.md](CONTRIBUTING.md).
+## Changelog
+See [CHANGELOG.md](documentaire-motion-design/CHANGELOG.md).
 
-## Licence
-
+## License
 [MIT](LICENSE)

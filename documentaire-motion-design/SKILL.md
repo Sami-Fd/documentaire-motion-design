@@ -41,17 +41,20 @@ On choisit au rendu : `--props='{"style":"craie"}'`. Si la personne ne précise 
 - Faire apparaître chaque élément **quand la voix en parle** : `delai={instantDuMot(texte, 'mot', duree)}`.
 - Pièces disponibles (`src/papier.tsx`) : `Pop` (apparition avec rebond), `Glisse` (entrée par translation), `Etiquette` (titre + sous-titre), `Texte` (`surFond` pour un texte posé sur le décor plutôt que sur une carte), `Personnage` (`vieux` pour un senior), `Piece` (euro), `Soleil`, `Nuage`, `Mer`, `Goutte`, `Collines`, `Fond`, `interp`, `useRessort`.
 - Graphiques : barres (rect dont la hauteur suit `interp`), anneau (fonction `arc`), compteur (nombre interpolé), pictogrammes (rangées de `Personnage`). Voir l'exemple.
+- Pièces propres à un sujet (icônes, objets) : les mettre dans `src/<sujet>/pieces.tsx` et les réutiliser d'un film à l'autre (ex. pour la cybersécurité : `Serveur`, `Navigateur`, `Cadenas`, `Robot`, `Requete`, `Alerte`, `Bouclier`, `Tampon`, `Carte`).
 - Couleurs : `C.*` (`src/theme.ts`) pour que tous les styles fonctionnent. Texte sur carte claire : couleur par défaut. Texte posé sur le décor : `surFond`.
-- Puis `src/<sujet>/Film.tsx` : `creerFilm(narration, [Scene1, …], 'voix/<sujet>')`, et ajouter la `<Composition>` avec `calculateMetadata` dans `src/Root.tsx` (même modèle que dans le Kit).
+- Puis `src/<sujet>/Film.tsx` : `creerFilm(narration, [Scene1, …], 'voix/<sujet>', marge)`, et ajouter la `<Composition>` avec `calculateMetadata` dans `src/Root.tsx` (même modèle que dans le Kit). `marge` (1,2 s par défaut) est le silence laissé après chaque piste ; le baisser (ex. 0,6) donne un rythme plus soutenu.
 
 ### 5. Vérifier avant de rendre
 Rendre des images fixes vers 80 % de chaque scène, les assembler en planche (PIL) et **les regarder** : chevauchements, texte qui dépasse, éléments hors cadre, lisibilité dans le style choisi.
 `npx remotion still src/index.ts <Id> out/test.png --frame=<n> --props='{"style":"papier"}'`
 
 ### 6. Voix off
-Les pistes vont dans `public/voix/<sujet>/<id>.mp3`. Chaque scène prend la durée de sa piste + 1,2 s. Sans pistes, la vidéo sort quand même, sous-titrée, avec des durées estimées.
+Les pistes vont dans `public/voix/<sujet>/<id>.mp3`. Chaque scène prend la durée de sa piste + `marge` (1,2 s par défaut). Sans pistes, la vidéo sort quand même, sous-titrée, avec des durées estimées.
 - Voix naturelle de la personne (ElevenLabs, etc.) : `python decouper_voix.py --preparer --narration …` crée `texte_elevenlabs.txt`, avec `<break time="2.0s" />` entre les scènes. La personne le colle tel quel et renvoie un seul MP3. Ensuite, `python decouper_voix.py voix.mp3 --narration … --sortie public/voix/<sujet>` le découpe sur les longues pauses et vérifie le nombre de scènes.
+- ElevenLabs **ignore parfois les balises `<break>`** : le script trouve alors trop peu de pauses et s'arrête. Dans ce cas, aligner sur une voix de référence Google (voir ci-dessous), puis caler chaque coupe sur la pause la plus proche (silencedetect ffmpeg, seuil plus bas, ex. 0,25 s à -38 dB) et vérifier avec la matrice de coûts.
 - Si la personne a collé les titres et qu'ils ont été lus : retrouver les coupes à la main, en alignant sur une voix de référence Google par DTW de MFCC (librosa), puis vérifier par une matrice de coûts DTW (scène i contre référence j : la diagonale doit être nettement plus basse).
+- **Accélérer la voix** si la personne trouve le rythme lent : `ffmpeg -i in.mp3 -af atempo=1.12 out.mp3` sur chaque piste (garde la hauteur de la voix). Proposer 10 à 15 % (au-delà, ça sonne pressé) et baisser `marge` en même temps (ex. 0,6). Garder les pistes d'origine dans un autre dossier pour pouvoir revenir en arrière, et recalculer les chapitres YouTube après.
 - Gratuit, sur l'ordinateur de la personne : `python generer_voix.py` (edge-tts, voix Microsoft `fr-FR-HenriNeural` / `fr-FR-DeniseNeural`).
 - Depuis un conteneur au réseau filtré : `python generer_voix_google.py` (voix Google Traduction, correcte mais robotique ; à présenter comme une version provisoire).
 
@@ -61,7 +64,7 @@ Les pistes vont dans `public/voix/<sujet>/<id>.mp3`. Chaque scène prend la dur�
 ### 8. Pour YouTube
 - **Miniature** : un `<Still>` 1280x720 dans le même style. Deux à quatre mots énormes, une question ou un chiffre choc, un ou deux personnages, un élément graphique fort (flèche, chiffre). Pas plus de 2 Mo.
 - **Titre** : moins de 70 caractères, sujet et promesse (« … expliqué en 2 minutes »), avec 2 ou 3 variantes.
-- **Description** : 2-3 phrases d'accroche, **chapitres** calculés à partir des durées réelles des scènes (première ligne `0:00`), sources, 3 à 5 hashtags.
+- **Description** : 2-3 phrases d'accroche, **chapitres** calculés à partir des durées réelles : début de la scène n = somme des `ceil((durée piste + marge) × 30) / 30` des scènes précédentes, arrondi à la seconde inférieure (première ligne `0:00`, au moins 3 chapitres de 10 s ou plus), sources, 3 à 5 hashtags.
 
 ## Kit : fichiers du projet
 
@@ -477,7 +480,8 @@ const SousTitres: React.FC<{texte: string; duree: number}> = ({texte, duree}) =>
 };
 
 // `dossierVoix` : sous-dossier de public/ qui contient <id>.mp3 pour chaque scène.
-export const creerFilm = (narration: Narration, scenes: React.FC<PropsScene>[], dossierVoix: string) => {
+// `marge` : secondes ajoutées après chaque piste avant la scène suivante (plus petit = rythme plus soutenu).
+export const creerFilm = (narration: Narration, scenes: React.FC<PropsScene>[], dossierVoix: string, marge = 1.2) => {
   if (scenes.length !== narration.length) {
     throw new Error(`${narration.length} textes de narration mais ${scenes.length} scènes`);
   }
@@ -492,7 +496,7 @@ export const creerFilm = (narration: Narration, scenes: React.FC<PropsScene>[], 
           const r = await fetch(src, {method: 'HEAD'});
           if (!r.ok) throw new Error('absent');
           const sec = await getAudioDurationInSeconds(src);
-          return {duree: Math.ceil((sec + 1.2) * FPS), voix: true};
+          return {duree: Math.ceil((sec + marge) * FPS), voix: true};
         } catch {
           const mots = s.texte.split(/\s+/).length;
           return {duree: Math.ceil((mots / 2.4 + 1.5) * FPS), voix: false};
@@ -539,7 +543,7 @@ Lancement   :  python generer_voix.py              (voix masculine par défaut)
 Liste des voix françaises :  edge-tts --list-voices | grep fr-
 
 Le texte est lu depuis --narration (par défaut src/social/narration.json) : modifiez-le là, relancez ce
-script, puis `npm run render:social`. La vidéo se cale toute seule sur la
+script, puis relancez le rendu (`npx remotion render …`). La vidéo se cale toute seule sur la
 durée de chaque piste.
 """
 import argparse
